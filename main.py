@@ -8,6 +8,8 @@ total_change: numpy.float64 = numpy.float64(0.0)
 x_array = numpy.arange(1, 252)
 y_array = numpy.empty(251)
 
+pd.DatetimeIndex
+
 def get_each_day(open: numpy.float64, close: numpy.float64, high: numpy.float64, low: numpy.float64): 
     y_array[len(price_array)-1] = open
     price_array.append(open)
@@ -41,7 +43,6 @@ print(df)
 print(len(price_array))
 plt.plot(x_array, y_array)
 plt.show()
-
 
 # if total_change < 0: 
 #     print("stock went down")
