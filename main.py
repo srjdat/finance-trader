@@ -1,52 +1,61 @@
 import yfinance as yf
+import numpy as np
 import pandas as pd
-import numpy
 import matplotlib.pyplot as plt
+import mplfinance as mpf
 
-price_array: list[numpy.float64] = []
-total_change: numpy.float64 = numpy.float64(0.0)
-x_array = numpy.arange(1, 252)
-y_array = numpy.empty(251)
+# variables
+ticker = 'AAPL'
+red = 'red'
+green = 'green'
+width1 = .6
+width2 = .1
 
-pd.DatetimeIndex
+df = pd.DataFrame(yf.Ticker(ticker=ticker).history(period='2y'))
+df['pos'] = np.arange(len(df)) # add a position index for displaying
+# print(df.axes)
 
-def get_each_day(open: numpy.float64, close: numpy.float64, high: numpy.float64, low: numpy.float64): 
-    y_array[len(price_array)-1] = open
-    price_array.append(open)
-    
-    global total_change
-    if len(price_array) > 1: 
-        total_change += (price_array[len(price_array)-1] - price_array[len(price_array)-2])
+plt.figure(figsize=(14, 7))
 
-def get_open_close(open: numpy.float64, close: numpy.float64):
-    open_close_difference: numpy.float64 = close - open
-    return open_close_difference 
-    
-def get_support(df: pd.DataFrame): 
-    print("hello")
+# which days are going up and which days are goind won
+up = df[df.Close >= df.Open]
+down = df[df.Close < df.Open]
 
-hp_data = yf.Ticker("HPE") 
-hp_history = hp_data.history(period="1y")
+# moving average
+df['SMA20'] = df.Close.rolling(window=20).mean()
+df['SMA50'] = df.Close.rolling(window=50).mean()
 
-df = pd.DataFrame(data=hp_history)
+# display all the ups and downs
+# using position to display first
+plt.bar(up.pos, up.Close-up.Open, width=width1, bottom=up.Open, color=green)
+plt.bar(up.pos, up.High-up.Close, width=width2, bottom=up.Close, color=green)
+plt.bar(up.pos, up.Low-up.Open, width=width2, bottom=up.Open, color=green)
+plt.bar(down.pos, down.Close-down.Open, width=width1, bottom=down.Open, color=red)
+plt.bar(down.pos, down.High-down.Open, width=width2, bottom=down.Open, color=red)
+plt.bar(down.pos, down.Low-down.Close, width=width2, bottom=down.Close, color=red)
+plt.plot(df.pos, df['SMA20'], color='blue', label='SMA 20', linewidth=.5)
 
-# print(df)
 
-for index, row in df.iterrows():
-    # printtype(row['Open'], row['High'], row['Low'], row['Close'])
-    get_each_day(row['Open'], row['High'], row['Low'], row['Close'])
-    open_close_difference = get_open_close(row['Open'], row['Close'])
+# find the step for slicing
+step = max(len(df) // 7, 1)
 
-print(df)
-# print(total_change)
-# print(open_close_difference)
-print(len(price_array))
-plt.plot(x_array, y_array)
+# include first and last
+tick_pos = list(df['pos'][::step])
+tick_label = list(df.index.date[::step])
+
+# if first isn't in there 
+if df['pos'].iloc[0] not in tick_pos: 
+    tick_pos.insert(0, df['pos'].iloc[0])
+    tick_label.insert(0, df.index.date[0])
+
+# if last isn't in there
+if df['pos'].iloc[-1] not in tick_pos: 
+    tick_pos.append(df['pos'].iloc[-1])
+    tick_label.append(df.index.date[-1])
+
+# plot the data and show it 
+plt.title(ticker + " Stock Price for the past month") 
+plt.xlabel("Date")
+plt.ylabel("Stock Price")
+plt.xticks(tick_pos, tick_label, rotation=45, ha='right') # changing the x axis to dates instead of position
 plt.show()
-
-# if total_change < 0: 
-#     print("stock went down")
-# elif total_change > 0: 
-#     print("stock went up")
-# else: 
-#     print("no change")
