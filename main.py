@@ -1,8 +1,12 @@
 import yfinance as yf
 import numpy as np
 import pandas as pd
+import matplotlib.ticker as mlt
 import matplotlib.pyplot as plt
 import mplfinance as mpf
+
+def format_volume(x, pos): 
+    return f"{round(x/1000000)}M"
 
 # variables
 ticker = 'AAPL'
@@ -14,8 +18,9 @@ width2 = .1
 df = pd.DataFrame(yf.Ticker(ticker=ticker).history(period='2y'))
 df['pos'] = np.arange(len(df)) # add a position index for displaying
 # print(df.axes)
+# print(df['Volume'])
 
-plt.figure(figsize=(14, 7))
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(14, 7), gridspec_kw={'height_ratios': [2,1]})
 
 # which days are going up and which days are goind won
 up = df[df.Close >= df.Open]
@@ -27,35 +32,55 @@ df['SMA50'] = df.Close.rolling(window=50).mean()
 
 # display all the ups and downs
 # using position to display first
-plt.bar(up.pos, up.Close-up.Open, width=width1, bottom=up.Open, color=green)
-plt.bar(up.pos, up.High-up.Close, width=width2, bottom=up.Close, color=green)
-plt.bar(up.pos, up.Low-up.Open, width=width2, bottom=up.Open, color=green)
-plt.bar(down.pos, down.Close-down.Open, width=width1, bottom=down.Open, color=red)
-plt.bar(down.pos, down.High-down.Open, width=width2, bottom=down.Open, color=red)
-plt.bar(down.pos, down.Low-down.Close, width=width2, bottom=down.Close, color=red)
-plt.plot(df.pos, df['SMA20'], color='blue', label='SMA 20', linewidth=.5)
+plt.bar
+ax1.bar(up.pos, up.Close-up.Open, width=width1, bottom=up.Open, color=green)
+ax1.bar(up.pos, up.High-up.Close, width=width2, bottom=up.Close, color=green)
+ax1.bar(up.pos, up.Low-up.Open, width=width2, bottom=up.Open, color=green)
+ax1.bar(down.pos, down.Close-down.Open, width=width1, bottom=down.Open, color=red)
+ax1.bar(down.pos, down.High-down.Open, width=width2, bottom=down.Open, color=red)
+ax1.bar(down.pos, down.Low-down.Close, width=width2, bottom=down.Close, color=red)
+ax1.plot(df.pos, df['SMA20'], color='blue', label='SMA 20', linewidth=.6)
+ax1.plot(df.pos, df['SMA50'], color='green', label='SMA 50', linewidth=.6)
 
+ax2.bar(df['pos'], df['Volume'], width1)
 
 # find the step for slicing
 step = max(len(df) // 7, 1)
 
 # include first and last
 tick_pos = list(df['pos'][::step])
-tick_label = list(df.index.date[::step])
+tick_label = list(df.index.date[::step]) # type: ignore
 
 # if first isn't in there 
 if df['pos'].iloc[0] not in tick_pos: 
     tick_pos.insert(0, df['pos'].iloc[0])
-    tick_label.insert(0, df.index.date[0])
+    tick_label.insert(0, df.index.date[0]) # type: ignore
 
 # if last isn't in there
 if df['pos'].iloc[-1] not in tick_pos: 
-    tick_pos.append(df['pos'].iloc[-1])
-    tick_label.append(df.index.date[-1])
+    # check if second to last is really close to last
+    max_step = step * .5
+    if df['pos'].iloc[-1] - tick_pos[-1] <= max_step: # too close so just make second to last the last one
+        tick_pos[-1] = df['pos'].iloc[-1] # make the last one we're displaying the last position
+        tick_label[-1] = df.index.date[-1] # make the last one we're displaying the last date # type: ignore
+    else: # second to last date is not too close 
+        tick_pos.append(df['pos'].iloc[-1])
+        tick_label.append(df.index.date[-1]) # type: ignore
+
 
 # plot the data and show it 
-plt.title(ticker + " Stock Price for the past month") 
-plt.xlabel("Date")
-plt.ylabel("Stock Price")
-plt.xticks(tick_pos, tick_label, rotation=45, ha='right') # changing the x axis to dates instead of position
+ax1.set_title(ticker + " Stock Price for the past month") 
+ax1.set_ylabel("Stock Price")
+ax1.set_xticks(ticks=tick_pos, labels=tick_label, rotation=45, ha='right')
+ax1.legend()
+ax1.margins(x=0.02)
+
+ax2.set_ylabel("Volume")
+ax2.set_xlabel("Date")
+ax2.set_xticks(ticks=tick_pos, labels=tick_label, rotation=45, ha='right')
+ax2.margins(x=0.02)
+ax2.yaxis.set_major_formatter(mlt.FuncFormatter(format_volume))
+
+fig.tight_layout()
+fig.subplots_adjust(hspace=0)
 plt.show()
