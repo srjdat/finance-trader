@@ -1,39 +1,59 @@
-import yfinance as yf
+import tkinter
+
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import mplfinance as mpf
 
-ticker = 'AAPL'
+# Implement the default Matplotlib key bindings.
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
-df = pd.DataFrame(yf.Ticker(ticker=ticker).history(period='1mo'))
+root = tkinter.Tk()
+root.wm_title("Embedded in Tk")
 
-df.lo
+fig = Figure(figsize=(5, 4), dpi=100)
+t = np.arange(0, 3, .01)
+ax = fig.add_subplot()
+line, = ax.plot(t, 2 * np.sin(2 * np.pi * t))
+ax.set_xlabel("time [s]")
+ax.set_ylabel("f(t)")
 
-print(df.index)
+canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
+canvas.draw()
 
-plt.figure()
+# pack_toolbar=False will make it easier to use a layout manager later on.
+toolbar = NavigationToolbar2Tk(canvas, root, pack_toolbar=False)
+toolbar.update()
 
-# up and down days
-up = df[df.Close >= df.Open]
-down = df[df.Close < df.Open]
+canvas.mpl_connect(
+    "key_press_event", lambda event: print(f"you pressed {event.key}"))
+canvas.mpl_connect("key_press_event", key_press_handler)
 
-# variables
-red = 'red'
-green = 'green'
-width1 = .3
-width2 = .03
+button_quit = tkinter.Button(master=root, text="Quit", command=root.destroy)
 
-plt.bar(up.index.date, up.Close-up.Open, width=width1, bottom=up.Open, color=green)
-plt.bar(up.index.date, up.High-up.Close, width=width2, bottom=up.Close, color=green)
-plt.bar(up.index.date, up.Low-up.Open, width=width2, bottom=up.Open, color=green)
 
-plt.bar(down.index.date, down.Close-down.Open, width=width1, bottom=down.Open, color=red)
-plt.bar(down.index.date, down.High-down.Open, width=width2, bottom=down.Open, color=red)
-plt.bar(down.index.date, down.Low-down.Close, width=width2, bottom=down.Close, color=red)
+def update_frequency(new_val):
+    # retrieve frequency
+    f = float(new_val)
 
-plt.title(ticker + " Stock Price for the past month")
-plt.xlabel("Date")
-plt.ylabel("Stock Price")
-plt.xticks(rotation=45, ha='right')
-plt.show()
+    # update data
+    y = 2 * np.sin(2 * np.pi * f * t)
+    line.set_data(t, y)
+
+    # required to update canvas and attached toolbar!
+    canvas.draw()
+
+
+slider_update = tkinter.Scale(root, from_=1, to=5, orient=tkinter.HORIZONTAL,
+                              command=update_frequency, label="Frequency [Hz]")
+
+# Packing order is important. Widgets are processed sequentially and if there
+# is no space left, because the window is too small, they are not displayed.
+# The canvas is rather flexible in its size, so we pack it last which makes
+# sure the UI controls are displayed as long as possible.
+button_quit.pack(side=tkinter.BOTTOM)
+slider_update.pack(side=tkinter.BOTTOM)
+toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
+tkinter.mainloop()
