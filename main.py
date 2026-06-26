@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('TkAgg')
 import yfinance as yf
 import numpy as np
 import pandas as pd
@@ -9,6 +11,7 @@ from tkinter import ttk
 from datetime import datetime
 # import mplfinance as mpf
 
+
 def format_volume(x, pos): 
     return f"{round(x/1000000)}M"
 
@@ -18,38 +21,35 @@ def enter_command():
     print(end_date_str.get())
     root.destroy()
 
-    start_date = start_date_str.get().split("/")
-    main(ticker_str.get(), '2020-01-01', '2026-01-01')
+    main(ticker_str.get(), start_date_str.get(), end_date_str.get())
 
 
 def gui(): 
     global root
     root = tkr.Tk()
     root.title("User Inputs")
-    root.geometry('1030x890')
+    root.geometry('420x240')
 
     global ticker_str, start_date_str, end_date_str
 
     # user enters the ticker first
     ticker_str = tkr.StringVar()
     ttk.Label(root, text="Ticker", font='15').grid(row=0, column=0, padx=15, pady=(6, 3))
-    ticker = ttk.Entry(root, textvariable=ticker_str, width=19)
+    ticker = ttk.Entry(root, textvariable=ticker_str, width=18)
     ticker.grid(row=0, column=1, padx=5, pady=6)
-    
+
     ttk.Label(root, text='Start Date', font='15').grid(row=1, column=0, padx=15, pady=(6, 3))
     start_date_str = tkr.StringVar()
-    start_date = tkcalendar.DateEntry(root, selectmode='day', year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, font='Segoe 14', textvariable=start_date_str)
+    start_date = tkcalendar.DateEntry(root, selectmode='day', year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, font='Segoe 14', textvariable=start_date_str, date_pattern='yyyy-mm-dd')
     start_date.grid(row=1, column=1, padx=5, pady=6)
 
     ttk.Label(root, text='End Date', font='15').grid(row=2, column=0, padx=15, pady=(6, 3))
     end_date_str = tkr.StringVar()
-    end_date = tkcalendar.DateEntry(root, selectmode='day', year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, font='Segoe 14', textvariable=end_date_str)
+    end_date = tkcalendar.DateEntry(root, selectmode='day', year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, font='Segoe 14', textvariable=end_date_str, date_pattern='yyyy-mm-dd')
     end_date.grid(row=2, column=1, padx=5, pady=6)
 
     button = ttk.Button(root, text='Enter', command=enter_command)
     button.grid(row=3, column=0, columnspan=2, pady=6)
-
-
     root.mainloop()
 
 def main(ticker: str, start_date: str, end_date: str): 
@@ -117,7 +117,7 @@ def main(ticker: str, start_date: str, end_date: str):
 
 
     # plot the data and show it 
-    ax1.set_title(ticker + " Stock Price for the past month") 
+    ax1.set_title(ticker + " Stock Price " + start_date_str.get() + " to " + end_date_str.get()) 
     ax1.set_ylabel("Stock Price")
     ax1.set_xticks(ticks=tick_pos, labels=tick_label, rotation=45, ha='right')
     ax1.legend()
@@ -132,9 +132,6 @@ def main(ticker: str, start_date: str, end_date: str):
     fig.tight_layout()
     fig.subplots_adjust(hspace=0)
     plt.show()
-
-
-
 
 if __name__ == "__main__": 
     gui()
