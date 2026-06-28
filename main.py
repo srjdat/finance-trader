@@ -61,7 +61,7 @@ def update_graph(value, start_date, end_date):
     df['SMA50'] = df.Close.rolling(window=50).mean()
 
     # plotting candlestick, sma20/50, and volume bars
-    figure.add_trace(go.Candlestick(open=df['Open'], close=df['Close'], high=df['High'], low=df['Low'], x=df.index), row=1, col=1)
+    figure.add_trace(go.Candlestick(open=df['Open'], close=df['Close'], high=df['High'], low=df['Low'], x=df.index, name='Stock'), row=1, col=1)
     figure.add_trace(go.Scatter(x=df.index, y=df['SMA20'], name='SMA20'), row=1, col=1)
     figure.add_trace(go.Scatter(x=df.index, y=df['SMA50'], name='SMA50'), row=1, col=1)
     figure.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume'), row=2, col=1)
