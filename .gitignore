@@ -1,3 +1,4 @@
 .idea/
-test.py
 .vscode/
+venv/
+test.py
