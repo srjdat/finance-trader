@@ -4,3 +4,4 @@ matplotlib
 mplfinance
 tkcalendar
 dash
+dash-bootstrap-components
