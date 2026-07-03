@@ -23,7 +23,7 @@ app.layout = dbc.Container(
                     n_clicks=0,
                     class_name="my-3",
                 ),  # type: ignore
-                dbc.Offcanvas(
+                dbc.Offcanvas(  # side bar
                     children=[
                         dcc.Dropdown(
                             id="dropdown-selection",
@@ -48,7 +48,7 @@ app.layout = dbc.Container(
             ],
             style={"display": "column", "gap": "15px"},
         ),
-        dcc.Graph(id="stock-chart"),
+        dcc.Graph(id="stock-chart", responsive=True, style={"height": 800}),
     ]
 )
 
@@ -74,7 +74,7 @@ def update_graph(value, start_date, end_date):
 
     # remove this later currently for testing
     value = "AAPL"
-    start_date = "2026-05-01"
+    start_date = "2025-05-01"
     end_date = "2026-06-01"
 
     if not value or not start_date or not end_date:
@@ -130,6 +130,8 @@ def update_graph(value, start_date, end_date):
             tick_label.append(df.index.date[-1])  # type: ignore
 
     # plotting candlestick, sma20/50, and volume bars
+    up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
+    down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
     figure.add_trace(
         go.Candlestick(
             open=df["Open"],
@@ -144,7 +146,26 @@ def update_graph(value, start_date, end_date):
     )
     figure.add_trace(go.Scatter(x=df.pos, y=df["SMA20"], name="SMA20"), row=1, col=1)
     figure.add_trace(go.Scatter(x=df.pos, y=df["SMA50"], name="SMA50"), row=1, col=1)
-    figure.add_trace(go.Bar(x=df.pos, y=df["Volume"], name="Volume"), row=2, col=1)
+    figure.add_trace(  # green volume bars
+        go.Bar(
+            x=up_volume.pos,
+            y=up_volume["Volume"],
+            name="Volume",
+            marker=dict(color="green"),
+        ),
+        row=2,
+        col=1,
+    )
+    figure.add_trace(  # red volume bars
+        go.Bar(
+            x=down_volume.pos,
+            y=down_volume["Volume"],
+            name="Volume",
+            marker=dict(color="red"),
+        ),
+        row=2,
+        col=1,
+    )
 
     figure.update_layout(
         xaxis_rangeslider_visible=False,
