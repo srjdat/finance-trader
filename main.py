@@ -140,6 +140,15 @@ def update_graph(value, start_date, end_date):
             low=df["Low"],
             x=df.pos,
             name="Stock",
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=(
+                "%{text}<br>"
+                "open: %{open:.4f}<br>"
+                "high: %{high:.4f}<br>"
+                "low: %{low:.4f}<br>"
+                "close: %{close:.4f}<br>"
+                "<extra></extra>"
+            ),
         ),
         row=1,
         col=1,
