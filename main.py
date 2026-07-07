@@ -1,6 +1,6 @@
 from datetime import date
 
-import dash_bootstrap_components as dbc # type: ignore (vs code bugging out)
+import dash_bootstrap_components as dbc  # type: ignore (vs code bugging out)
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -110,7 +110,7 @@ def update_graph(value, start_date, end_date):
     down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
 
     # find rsi
-    daily_change = df["Close"].diff() # today - yesterday
+    daily_change = df["Close"].diff()  # today - yesterday
     # daily_change.dropna(inplace=True)
 
     # change up and down
@@ -119,8 +119,8 @@ def update_graph(value, start_date, end_date):
     change_down[change_down > 0] = 0  # up = 0 down = close_prev - close_now
 
     # average up and down
-    average_up = change_up.rolling(14).mean() # get average for up
-    average_down = change_down.rolling(14).mean().abs() # get average for down
+    average_up = change_up.rolling(14).mean()  # get average for up
+    average_down = change_down.rolling(14).mean().abs()  # get average for down
     rsi = 100 * average_up / (average_up + average_down)
     # these are the most widely used values (got this from charles schwab youtube video: https://youtu.be/hbcCykbX14U?si=eaaSyrdYvQqW3a8Q)
     oversold = np.full(len(df), 30)  # 1d array with 30 as all the values
@@ -128,11 +128,11 @@ def update_graph(value, start_date, end_date):
 
     # MACD
     # ema
-    df['EMA12'] = df.Close.ewm(span=12).mean()
-    df['EMA26'] = df.Close.ewm(span=26).mean()
-    df['MACD'] = df['EMA12'] - df['EMA26']
-    df['Signal Line'] = df['MACD'].ewm(span=9).mean()
-    df['macd hist'] = df['MACD'] - df['Signal Line']
+    df["EMA12"] = df.Close.ewm(span=12).mean()
+    df["EMA26"] = df.Close.ewm(span=26).mean()
+    df["MACD"] = df["EMA12"] - df["EMA26"]
+    df["Signal Line"] = df["MACD"].ewm(span=9).mean()
+    df["macd hist"] = df["MACD"] - df["Signal Line"]
 
     # find the step for slicing
     step = max(len(df) // 7, 1)
@@ -165,7 +165,7 @@ def update_graph(value, start_date, end_date):
 
     # plotting candlestick, sma20/50, and volume bars
 
-    figure.add_trace( # candle stick
+    figure.add_trace(  # candle stick
         go.Candlestick(
             open=df["Open"],
             close=df["Close"],
@@ -217,7 +217,7 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=df["EMA12"],
             name="EMA 12",
-            marker=dict(color='#D4A24C'),
+            marker=dict(color="#D4A24C"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>EMA 12: %{y:.4f}<br><extra></extra>"),
         ),
@@ -229,7 +229,7 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=df["EMA26"],
             name="EMA 26",
-            marker=dict(color='#8B5A2B'),
+            marker=dict(color="#8B5A2B"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>EMA 26: %{y:.4f}<br><extra></extra>"),
         ),
@@ -243,7 +243,7 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=df["Volatility"],
             name="Volatility",
-            marker=dict(color='#805B87'),
+            marker=dict(color="#805B87"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>volatility: %{y:.4f}<br><extra></extra>"),
         ),
@@ -306,7 +306,7 @@ def update_graph(value, start_date, end_date):
         row=4,
         col=1,
     )
-    figure.add_trace( # over sold line
+    figure.add_trace(  # over sold line
         go.Scatter(
             x=df.pos,
             y=oversold,
@@ -321,10 +321,10 @@ def update_graph(value, start_date, end_date):
     )
 
     # macd
-    figure.add_trace( #macd
+    figure.add_trace(  # macd
         go.Scatter(
             x=df.pos,
-            y=df['MACD'],
+            y=df["MACD"],
             name="MACD",
             marker=dict(color="gray"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
@@ -333,10 +333,10 @@ def update_graph(value, start_date, end_date):
         row=5,
         col=1,
     )
-    figure.add_trace( #signal line
+    figure.add_trace(  # signal line
         go.Scatter(
             x=df.pos,
-            y=df['Signal Line'],
+            y=df["Signal Line"],
             name="Signal Line",
             marker=dict(color="#89CFF0"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
@@ -346,12 +346,12 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
     # histogram
-    colors = ['green' if val >= 0 else 'red' for val in df['macd hist']]
+    colors = ["green" if val >= 0 else "red" for val in df["macd hist"]]
     figure.add_trace(
         go.Bar(
             x=df.pos,
-            y=df['macd hist'],
-            name='MACD Histogram',
+            y=df["macd hist"],
+            name="MACD Histogram",
             marker=dict(color=colors),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>Histogram: %{y:.4f}<extra></extra>"),
@@ -359,7 +359,6 @@ def update_graph(value, start_date, end_date):
         row=5,
         col=1,
     )
-
 
     figure.update_layout(
         xaxis_rangeslider_visible=False,
@@ -369,20 +368,23 @@ def update_graph(value, start_date, end_date):
         margin=dict(l=10, r=10, pad=2),
     )
 
-    figure.update_xaxes(showgrid=True, 
-                        gridcolor='lightgrey',
-                        zeroline=True, 
-                        zerolinecolor='lightgrey', 
-                        zerolinewidth=1)
-    figure.update_yaxes(showgrid=True, 
-                        gridcolor='lightgrey',     
-                        zeroline=True, 
-                        zerolinecolor='lightgrey', 
-                        zerolinewidth=1)
-    
+    figure.update_xaxes(
+        showgrid=True,
+        gridcolor="lightgrey",
+        zeroline=True,
+        zerolinecolor="lightgrey",
+        zerolinewidth=1,
+    )
+    figure.update_yaxes(
+        showgrid=True,
+        gridcolor="lightgrey",
+        zeroline=True,
+        zerolinecolor="lightgrey",
+        zerolinewidth=1,
+    )
 
-    # instead of having 
-    for row in range(1,6): 
+    # instead of having
+    for row in range(1, 6):
         figure.update_xaxes(
             tickvals=tick_pos,
             ticktext=tick_label,
