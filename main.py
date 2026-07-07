@@ -1,6 +1,6 @@
 from datetime import date
 
-import dash_bootstrap_components as dbc
+import dash_bootstrap_components as dbc # type: ignore (vs code bugging out)
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -90,10 +90,10 @@ def update_graph(value, start_date, end_date):
     label = csv_df[csv_df["Ticker"] == value]["Company Name"].iloc[0]
 
     figure = make_subplots(
-        rows=4,
+        rows=5,
         cols=1,
         shared_xaxes=True,
-        row_heights=[0.5, 0.15, 0.2, 0.15],
+        row_heights=[0.41, 0.12, 0.15, 0.16, 0.16],
         vertical_spacing=0.0,
     )
 
@@ -105,20 +105,34 @@ def update_graph(value, start_date, end_date):
     df["Daily Change"] = df["Close"].pct_change()
     df["Volatility"] = df["Daily Change"].rolling(window=20).std()
 
-    # find rsi
-    daily_change = df["Close"].diff()
-    daily_change.dropna(inplace=True)
+    # separate volume based on up and down
+    up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
+    down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
 
+    # find rsi
+    daily_change = df["Close"].diff() # today - yesterday
+    # daily_change.dropna(inplace=True)
+
+    # change up and down
     change_up, change_down = daily_change.copy(), daily_change.copy()
     change_up[change_up < 0] = 0  # up = close_now - close_prev down = 0
     change_down[change_down > 0] = 0  # up = 0 down = close_prev - close_now
 
-    average_up = change_up.rolling(14).mean()
-    average_down = change_down.rolling(14).mean().abs()
+    # average up and down
+    average_up = change_up.rolling(14).mean() # get average for up
+    average_down = change_down.rolling(14).mean().abs() # get average for down
     rsi = 100 * average_up / (average_up + average_down)
     # these are the most widely used values (got this from charles schwab youtube video: https://youtu.be/hbcCykbX14U?si=eaaSyrdYvQqW3a8Q)
     oversold = np.full(len(df), 30)  # 1d array with 30 as all the values
     overbought = np.full(len(df), 70)  # 1d array with 70 as all the values
+
+    # MACD
+    # ema
+    df['EMA12'] = df.Close.ewm(span=12).mean()
+    df['EMA26'] = df.Close.ewm(span=26).mean()
+    df['MACD'] = df['EMA12'] - df['EMA26']
+    df['Signal Line'] = df['MACD'].ewm(span=9).mean()
+    df['macd hist'] = df['MACD'] - df['Signal Line']
 
     # find the step for slicing
     step = max(len(df) // 7, 1)
@@ -150,10 +164,8 @@ def update_graph(value, start_date, end_date):
             tick_label.append(df.index.date[-1])  # type: ignore
 
     # plotting candlestick, sma20/50, and volume bars
-    up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
-    down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
 
-    figure.add_trace(
+    figure.add_trace( # candle stick
         go.Candlestick(
             open=df["Open"],
             close=df["Close"],
@@ -199,12 +211,39 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # ema 12 & 26
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df["EMA12"],
+            name="EMA 12",
+            marker=dict(color='#D4A24C'),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>EMA 12: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df["EMA26"],
+            name="EMA 26",
+            marker=dict(color='#8B5A2B'),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>EMA 26: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+
     # volatility
     figure.add_trace(
         go.Scatter(
             x=df.pos,
             y=df["Volatility"],
             name="Volatility",
+            marker=dict(color='#805B87'),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>volatility: %{y:.4f}<br><extra></extra>"),
         ),
@@ -246,7 +285,7 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=rsi,
             name="RSI",
-            marker=dict(color="black"),
+            marker=dict(color="cornflowerblue"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             customdata=rsi,
             hovertemplate=("%{text}<br>rsi: %{customdata:.4f}<extra></extra>"),
@@ -267,7 +306,7 @@ def update_graph(value, start_date, end_date):
         row=4,
         col=1,
     )
-    figure.add_trace(
+    figure.add_trace( # over sold line
         go.Scatter(
             x=df.pos,
             y=oversold,
@@ -281,53 +320,77 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # macd
+    figure.add_trace( #macd
+        go.Scatter(
+            x=df.pos,
+            y=df['MACD'],
+            name="MACD",
+            marker=dict(color="gray"),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>MACD: %{y:.4f}<extra></extra>"),
+        ),
+        row=5,
+        col=1,
+    )
+    figure.add_trace( #signal line
+        go.Scatter(
+            x=df.pos,
+            y=df['Signal Line'],
+            name="Signal Line",
+            marker=dict(color="#89CFF0"),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>Signal Line: %{y:.4f}<extra></extra>"),
+        ),
+        row=5,
+        col=1,
+    )
+    # histogram
+    colors = ['green' if val >= 0 else 'red' for val in df['macd hist']]
+    figure.add_trace(
+        go.Bar(
+            x=df.pos,
+            y=df['macd hist'],
+            name='MACD Histogram',
+            marker=dict(color=colors),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>Histogram: %{y:.4f}<extra></extra>"),
+        ),
+        row=5,
+        col=1,
+    )
+
+
     figure.update_layout(
         xaxis_rangeslider_visible=False,
         height=800,
+        plot_bgcolor="white",
         title=f"{label} Stock Price {start_date} to {end_date}",
         margin=dict(l=10, r=10, pad=2),
     )
 
-    # for candlestick and sma
-    figure.update_xaxes(
-        tickvals=tick_pos,
-        ticktext=tick_label,
-        tickangle=-45,
-        showgrid=True,
-        type="linear",
-        row=1,
-        col=1,
-    )
-    # for the volatility
-    figure.update_xaxes(
-        tickvals=tick_pos,
-        ticktext=tick_label,
-        tickangle=-45,
-        showgrid=True,
-        type="linear",
-        row=2,
-        col=1,
-    )
-    # for the volume chart
-    figure.update_xaxes(
-        tickvals=tick_pos,
-        ticktext=tick_label,
-        tickangle=-45,
-        showgrid=True,
-        type="linear",
-        row=3,
-        col=1,
-    )
-    # for the volume chart
-    figure.update_xaxes(
-        tickvals=tick_pos,
-        ticktext=tick_label,
-        tickangle=-15,
-        showgrid=True,
-        type="linear",
-        row=4,
-        col=1,
-    )
+    figure.update_xaxes(showgrid=True, 
+                        gridcolor='lightgrey',
+                        zeroline=True, 
+                        zerolinecolor='lightgrey', 
+                        zerolinewidth=1)
+    figure.update_yaxes(showgrid=True, 
+                        gridcolor='lightgrey',     
+                        zeroline=True, 
+                        zerolinecolor='lightgrey', 
+                        zerolinewidth=1)
+    
+
+    # instead of having 
+    for row in range(1,6): 
+        figure.update_xaxes(
+            tickvals=tick_pos,
+            ticktext=tick_label,
+            tickangle=-15,
+            type="linear",
+            row=row,
+            col=1,
+        )
 
     return figure
 
