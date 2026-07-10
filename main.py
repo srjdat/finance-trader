@@ -76,8 +76,8 @@ def update_graph(value, start_date, end_date):
 
     # remove this later currently for testing
     value = "AAPL"
-    start_date = "2023-05-01"
-    end_date = "2026-07-7"
+    start_date = "2024-05-01"
+    end_date = "2026-07-11"
 
     if not value or not start_date or not end_date:
         return go.Figure()
@@ -107,7 +107,7 @@ def update_graph(value, start_date, end_date):
     # got this from https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/distance-from-lows 
     # distance from 52-week high/low
     df['52wkHigh'] = df.High.rolling(window=252).max()
-    df['52wkLow'] = df.Low.rolling(window=252).max()
+    df['52wkLow'] = df.Low.rolling(window=252).min()
     df['Distance From High'] = (df.Close - df['52wkHigh']) / df['52wkHigh'] * 100
     df['Distance From Low'] = (df.Close - df['52wkLow']) / df['52wkLow'] * 100
 
@@ -154,6 +154,16 @@ def update_graph(value, start_date, end_date):
     # separate volume based on up and down
     up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
     down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
+
+    # returns over windows
+    one_day_window = (df.iloc[-1]['Close'] - df.iloc[-2]['Close']) / df.iloc[-2]['Close'] * 100
+    one_week_window = (df.iloc[-1]['Close'] - df.iloc[-5]['Close']) / df.iloc[-2]['Close'] * 100
+    one_month_window = (df.iloc[-1]['Close'] - df.iloc[-21]['Close']) / df.iloc[-2]['Close'] * 100
+    three_month_window = (df.iloc[-1]['Close'] - df.iloc[-63]['Close']) / df.iloc[-2]['Close'] * 100
+    six_month_window = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
+    one_year_window = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
+
+    print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window)
 
     # after this is all for displaying so this goes after slimming the df down
     # find the step for slicing
@@ -278,7 +288,7 @@ def update_graph(value, start_date, end_date):
             name="52 Week Low",
             line=dict(color="#4B0082", dash="dash"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
-            hovertemplate=("%{text}<br>52 Week High: %{y:.4f}<br><extra></extra>"),
+            hovertemplate=("%{text}<br>52 Week Low: %{y:.4f}<br><extra></extra>"),
         ),
         row=1,
         col=1,
