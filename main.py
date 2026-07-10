@@ -1,6 +1,7 @@
+import datetime
 from datetime import date
 
-import dash_bootstrap_components as dbc  # type: ignore (vs code bugging out)
+import dash_bootstrap_components as dbc  # type: ignore (vs code bugging out here idk why)
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -48,7 +49,7 @@ app.layout = dbc.Container(
             ],
             style={"display": "column"},
         ),
-        dcc.Graph(id="stock-chart"),
+        dcc.Graph(id="stock-chart", style={"height": "95vh"}),
     ],
     fluid=True,
 )
@@ -75,11 +76,15 @@ def update_graph(value, start_date, end_date):
 
     # remove this later currently for testing
     value = "AAPL"
-    start_date = "2025-05-01"
-    end_date = "2026-06-27"
+    start_date = "2023-05-01"
+    end_date = "2026-07-7"
 
     if not value or not start_date or not end_date:
         return go.Figure()
+
+    # start from a year back so we can have 52 week high low and other stuff already loaded in
+    start_date_original = datetime.date.strptime(start_date, "%Y-%m-%d")
+    start_date = start_date_original.replace(year=start_date_original.year-1)
 
     df = pd.DataFrame(yf.Ticker(ticker=value).history(start=start_date, end=end_date))
     df["pos"] = np.arange(
@@ -93,9 +98,18 @@ def update_graph(value, start_date, end_date):
         rows=5,
         cols=1,
         shared_xaxes=True,
-        row_heights=[0.41, 0.12, 0.15, 0.16, 0.16],
+        row_heights=[0.41, 0.12, 0.17, 0.15, 0.15],
         vertical_spacing=0.0,
     )
+
+    # calculations for displaying stuff
+    # keep this before cutting this down
+    # got this from https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/distance-from-lows 
+    # distance from 52-week high/low
+    df['52wkHigh'] = df.High.rolling(window=252).max()
+    df['52wkLow'] = df.Low.rolling(window=252).max()
+    df['Distance From High'] = (df.Close - df['52wkHigh']) / df['52wkHigh'] * 100
+    df['Distance From Low'] = (df.Close - df['52wkLow']) / df['52wkLow'] * 100
 
     # moving average
     df["SMA20"] = df.Close.rolling(window=20).mean()
@@ -103,15 +117,15 @@ def update_graph(value, start_date, end_date):
 
     # find the volatility
     df["Daily Change"] = df["Close"].pct_change()
-    df["Volatility"] = df["Daily Change"].rolling(window=20).std()
+    df["Volatility"] = 100 * (df["Daily Change"].rolling(window=20).std())
 
-    # separate volume based on up and down
-    up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
-    down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
+    # RVOL
+    # find sma 10 for volume
+    df['Volume SMA 20'] = df['Volume'].rolling(window=20).mean()
+    df['rvol'] = df.Volume/df['Volume SMA 20'].shift(1)
 
     # find rsi
     daily_change = df["Close"].diff()  # today - yesterday
-    # daily_change.dropna(inplace=True)
 
     # change up and down
     change_up, change_down = daily_change.copy(), daily_change.copy()
@@ -121,7 +135,7 @@ def update_graph(value, start_date, end_date):
     # average up and down
     average_up = change_up.rolling(14).mean()  # get average for up
     average_down = change_down.rolling(14).mean().abs()  # get average for down
-    rsi = 100 * average_up / (average_up + average_down)
+    df['rsi'] = 100 * average_up / (average_up + average_down)
     # these are the most widely used values (got this from charles schwab youtube video: https://youtu.be/hbcCykbX14U?si=eaaSyrdYvQqW3a8Q)
     oversold = np.full(len(df), 30)  # 1d array with 30 as all the values
     overbought = np.full(len(df), 70)  # 1d array with 70 as all the values
@@ -134,6 +148,14 @@ def update_graph(value, start_date, end_date):
     df["Signal Line"] = df["MACD"].ewm(span=9).mean()
     df["macd hist"] = df["MACD"] - df["Signal Line"]
 
+    # make df only from start date to end date
+    df = df.iloc[250:len(df)]
+    
+    # separate volume based on up and down
+    up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
+    down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
+
+    # after this is all for displaying so this goes after slimming the df down
     # find the step for slicing
     step = max(len(df) // 7, 1)
 
@@ -164,7 +186,6 @@ def update_graph(value, start_date, end_date):
             tick_label.append(df.index.date[-1])  # type: ignore
 
     # plotting candlestick, sma20/50, and volume bars
-
     figure.add_trace(  # candle stick
         go.Candlestick(
             open=df["Open"],
@@ -237,6 +258,32 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # distance from 52 week high/low
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df['52wkHigh'],
+            name="52 Week High",
+            line=dict(color="#FF8C00", dash='dash'),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>52 Week High: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df['52wkLow'],
+            name="52 Week Low",
+            line=dict(color="#4B0082", dash="dash"),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>52 Week High: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+
     # volatility
     figure.add_trace(
         go.Scatter(
@@ -245,9 +292,9 @@ def update_graph(value, start_date, end_date):
             name="Volatility",
             marker=dict(color="#805B87"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
-            hovertemplate=("%{text}<br>volatility: %{y:.4f}<br><extra></extra>"),
+            hovertemplate=("%{text}<br>volatility: %{y:.1f}%<br><extra></extra>"),
         ),
-        row=2,
+        row=3,
         col=1,
     )
 
@@ -258,11 +305,11 @@ def update_graph(value, start_date, end_date):
             y=up_volume["Volume"],
             name="Volume",
             marker=dict(color="green"),
-            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            text=up_volume.index.strftime("%Y-%m-%d"),  # type: ignore
             customdata=up_volume["Volume"].apply(lambda x: f"{x / 1_000_000:.4f}M"),
             hovertemplate=("%{text}<br>volume: %{customdata}<extra></extra>"),
         ),
-        row=3,
+        row=2,
         col=1,
     )
     figure.add_trace(  # red volume bars
@@ -271,11 +318,24 @@ def update_graph(value, start_date, end_date):
             y=down_volume["Volume"],
             name="Volume",
             marker=dict(color="red"),
-            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            text=down_volume.index.strftime("%Y-%m-%d"),  # type: ignore
             customdata=down_volume["Volume"].apply(lambda x: f"{x / 1_000_000:.4f}M"),
             hovertemplate=("%{text}<br>volume: %{customdata}<extra></extra>"),
         ),
-        row=3,
+        row=2,
+        col=1,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df['Volume SMA 20'],
+            name='Volume SMA 20',
+            marker=dict(color='blue'),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            customdata=df['Volume SMA 20'].apply(lambda x: f"{x / 1_000_000:.4f}M"),
+            hovertemplate=("%{text}<br>Volume SMA 20: %{customdata}<extra></extra>"),
+        ),
+        row=2,
         col=1,
     )
 
@@ -283,11 +343,11 @@ def update_graph(value, start_date, end_date):
     figure.add_trace(
         go.Scatter(
             x=df.pos,
-            y=rsi,
+            y=df['rsi'],
             name="RSI",
             marker=dict(color="cornflowerblue"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
-            customdata=rsi,
+            customdata=df['rsi'],
             hovertemplate=("%{text}<br>rsi: %{customdata:.4f}<extra></extra>"),
         ),
         row=4,
@@ -362,9 +422,8 @@ def update_graph(value, start_date, end_date):
 
     figure.update_layout(
         xaxis_rangeslider_visible=False,
-        height=800,
         plot_bgcolor="white",
-        title=f"{label} Stock Price {start_date} to {end_date}",
+        title=f"{label} Stock Price {start_date_original} to {end_date}",
         margin=dict(l=10, r=10, pad=2),
     )
 
