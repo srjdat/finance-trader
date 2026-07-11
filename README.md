@@ -1,2 +1,12 @@
 # Finance Trader
-Currently just shows the history of the stock in a candlestick graph with green and red to show growth and decline.  
+Features: 
+- Candlestick for prices
+- SMA 20/50, EMA 12/26
+- Bollinger Bands based on SMA 20
+- 52 Week High/Low
+- Colored coded Volume Bars 
+- Volume SMA 20
+- Volatility, 
+- Average True Range, 
+- RSI with overbought and oversold lines
+- MACD, Signal Line, and MACD Histogram

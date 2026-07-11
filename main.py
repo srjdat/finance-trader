@@ -190,7 +190,7 @@ def update_graph(value, start_date, end_date):
     six_month_window = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
     one_year_window = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
 
-    # print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window, sep="\n")
+    print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window, sep="\n")
 
     # after this is all for displaying so this goes after slimming the df down
     # find the step for slicing
