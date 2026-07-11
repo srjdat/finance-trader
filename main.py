@@ -22,7 +22,7 @@ app.layout = dbc.Container(
                     "Configure",
                     id="open-offcanvas",
                     n_clicks=0,
-                    class_name="my-3",
+                    class_name="my-1",
                 ),
                 dbc.Offcanvas(  # side bar
                     children=[
@@ -49,7 +49,7 @@ app.layout = dbc.Container(
             ],
             style={"display": "column"},
         ),
-        dcc.Graph(id="stock-chart", style={"height": "95vh"}),
+        dcc.Graph(id="stock-chart", style={"height": "98vh"}),
     ],
     fluid=True,
 )
@@ -95,11 +95,12 @@ def update_graph(value, start_date, end_date):
     label = csv_df[csv_df["Ticker"] == value]["Company Name"].iloc[0]
 
     figure = make_subplots(
-        rows=5,
+        rows=6,
         cols=1,
         shared_xaxes=True,
-        row_heights=[0.41, 0.12, 0.17, 0.15, 0.15],
-        vertical_spacing=0.0,
+        row_heights=[0.38, 0.11, 0.11, 0.11, 0.14, 0.15], # candlestick, volume, volatility, atr, rsi, macd
+        vertical_spacing=0.03,
+        subplot_titles=("Price", "Volume", "Volatility", "Average True Range", "RSI", "MACD"),
     )
 
     # calculations for displaying stuff
@@ -114,6 +115,32 @@ def update_graph(value, start_date, end_date):
     # moving average
     df["SMA20"] = df.Close.rolling(window=20).mean()
     df["SMA50"] = df.Close.rolling(window=50).mean()
+
+    # bollinger bands
+    df['Upper Band'] = 2 * df.Close.rolling(window=20).std() + df['SMA20']
+    df['Lower Band'] = df['SMA20'] - 2 * df.Close.rolling(window=20).std()
+
+    # average true range
+    # tr = max(high, close_prev) - min(low, close_prev)
+    close_prev = df['Close'].shift(1)
+    tr1 = pd.concat([df['High'], close_prev], axis=1).max(axis=1)
+    tr2 = pd.concat([df['Low'], close_prev], axis=1).min(axis=1)
+    true_range = tr1 - tr2
+
+    n = 14
+    # instantiate the atr dataframe
+    temp = true_range.iloc[0:n].mean() # get the first 14 day average
+
+    # start the atr series
+    atr_values = [np.nan] * (n-1) # first 14 is going to be nan
+    atr_values.append(temp) # add temp to the 14th index
+
+    # get the rest
+    for i in range(n, len(true_range)): # smma
+        temp = (temp * (n-1) + true_range.iloc[i]) / n  # yesterday's temp value becomes today's atr value
+        atr_values.append(temp)  # add today's temp into atr
+
+    df['ATR'] = pd.Series(data=atr_values, index=true_range.index) # add it into df
 
     # find the volatility
     df["Daily Change"] = df["Close"].pct_change()
@@ -163,7 +190,7 @@ def update_graph(value, start_date, end_date):
     six_month_window = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
     one_year_window = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
 
-    print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window)
+    # print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window, sep="\n")
 
     # after this is all for displaying so this goes after slimming the df down
     # find the step for slicing
@@ -242,6 +269,34 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # bollinger bands
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df["Upper Band"],
+            name="Upper Band",
+            line=dict(color='#ab62fa'),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>Upper Band: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df["Lower Band"],
+            name="Lower Band",
+            line=dict(color='#ab62fa'),
+            fill='tonexty',
+            fillcolor='rgba(128, 0, 128, 0.1)',
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>Lower Band: %{y:.4f}<br><extra></extra>"),
+        ),
+        row=1,
+        col=1,
+    )
+
     # ema 12 & 26
     figure.add_trace(
         go.Scatter(
@@ -294,20 +349,6 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
-    # volatility
-    figure.add_trace(
-        go.Scatter(
-            x=df.pos,
-            y=df["Volatility"],
-            name="Volatility",
-            marker=dict(color="#805B87"),
-            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
-            hovertemplate=("%{text}<br>volatility: %{y:.1f}%<br><extra></extra>"),
-        ),
-        row=3,
-        col=1,
-    )
-
     # volume bars
     figure.add_trace(  # green volume bars
         go.Bar(
@@ -349,6 +390,34 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # volatility
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos,
+            y=df["Volatility"],
+            name="Volatility",
+            marker=dict(color="#805B87"),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>volatility: %{y:.1f}%<br><extra></extra>"),
+        ),
+        row=3,
+        col=1,
+    )
+
+    # atr
+    figure.add_trace(
+        go.Scatter(
+            x=df.pos, 
+            y=df['ATR'],
+            name="Average True Range",
+            marker=dict(color="#4C7C7C"),
+            text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+            hovertemplate=("%{text}<br>Average True Range: %{y:.4f}<br><extra></extra>"),
+        ), 
+        row=4, 
+        col=1,
+    )
+
     # rsi
     figure.add_trace(
         go.Scatter(
@@ -360,7 +429,7 @@ def update_graph(value, start_date, end_date):
             customdata=df['rsi'],
             hovertemplate=("%{text}<br>rsi: %{customdata:.4f}<extra></extra>"),
         ),
-        row=4,
+        row=5,
         col=1,
     )
     figure.add_trace(  # over bought line
@@ -373,7 +442,7 @@ def update_graph(value, start_date, end_date):
             customdata=overbought,
             hovertemplate=("%{text}<br>overbought: %{customdata}<extra></extra>"),
         ),
-        row=4,
+        row=5,
         col=1,
     )
     figure.add_trace(  # over sold line
@@ -386,7 +455,7 @@ def update_graph(value, start_date, end_date):
             customdata=oversold,
             hovertemplate=("%{text}<br>oversold: %{customdata}<extra></extra>"),
         ),
-        row=4,
+        row=5,
         col=1,
     )
 
@@ -400,7 +469,7 @@ def update_graph(value, start_date, end_date):
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>MACD: %{y:.4f}<extra></extra>"),
         ),
-        row=5,
+        row=6,
         col=1,
     )
     figure.add_trace(  # signal line
@@ -412,7 +481,7 @@ def update_graph(value, start_date, end_date):
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>Signal Line: %{y:.4f}<extra></extra>"),
         ),
-        row=5,
+        row=6,
         col=1,
     )
     # histogram
@@ -426,15 +495,16 @@ def update_graph(value, start_date, end_date):
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>Histogram: %{y:.4f}<extra></extra>"),
         ),
-        row=5,
+        row=6,
         col=1,
     )
 
     figure.update_layout(
         xaxis_rangeslider_visible=False,
-        plot_bgcolor="white",
+        plot_bgcolor="#F0F0F0",
         title=f"{label} Stock Price {start_date_original} to {end_date}",
         margin=dict(l=10, r=10, pad=2),
+        legend=dict(traceorder="normal")
     )
 
     figure.update_xaxes(
