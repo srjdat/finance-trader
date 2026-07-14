@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import yfinance as yf
 from dash import Dash, Input, Output, State, callback, dcc, html
 from plotly.subplots import make_subplots
+from output import generate_signal
 
 # read the csv file with all the names and tickers
 csv_df = pd.read_csv("all.csv")
@@ -23,7 +24,7 @@ app.layout = dbc.Container(
                     id="open-offcanvas",
                     n_clicks=0,
                     class_name="my-1",
-                ),
+                ), # type: ignore
                 dbc.Offcanvas(  # side bar
                     children=[
                         dcc.Dropdown(
@@ -76,8 +77,8 @@ def update_graph(value, start_date, end_date):
 
     # remove this later currently for testing
     value = "AAPL"
-    start_date = "2024-05-01"
-    end_date = "2026-07-11"
+    start_date = "2023-05-01"
+    end_date = "2024-08-23"
 
     if not value or not start_date or not end_date:
         return go.Figure()
@@ -91,8 +92,10 @@ def update_graph(value, start_date, end_date):
         len(df)
     )  # same idea as last time, to not have weekends and holidays
 
+    # spy_df = pd.DataFrame(yf.Ticker(ticker='SPY').history(start=start_date_original, end=end_date))
+
     # label = company name of the ticker we're using
-    label = csv_df[csv_df["Ticker"] == value]["Company Name"].iloc[0]
+    label = csv_df[csv_df["Ticker"] == value]["Company Name"].iloc[0] # type: ignore
 
     figure = make_subplots(
         rows=6,
@@ -105,7 +108,7 @@ def update_graph(value, start_date, end_date):
 
     # calculations for displaying stuff
     # keep this before cutting this down
-    # got this from https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/distance-from-lows 
+    # got this from https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/distance-from-lows
     # distance from 52-week high/low
     df['52wkHigh'] = df.High.rolling(window=252).max()
     df['52wkLow'] = df.Low.rolling(window=252).min()
@@ -161,7 +164,7 @@ def update_graph(value, start_date, end_date):
 
     # average up and down
     average_up = change_up.rolling(14).mean()  # get average for up
-    average_down = change_down.rolling(14).mean().abs()  # get average for down
+    average_down = change_down.rolling(14).mean().abs() #  get average for down
     df['rsi'] = 100 * average_up / (average_up + average_down)
     # these are the most widely used values (got this from charles schwab youtube video: https://youtu.be/hbcCykbX14U?si=eaaSyrdYvQqW3a8Q)
     oversold = np.full(len(df), 30)  # 1d array with 30 as all the values
@@ -177,21 +180,21 @@ def update_graph(value, start_date, end_date):
 
     # make df only from start date to end date
     df = df.iloc[250:len(df)]
-    
+
     # separate volume based on up and down
     up_volume = df[df["Close"] >= df["Open"]]  # when the day is positive
     down_volume = df[df["Close"] < df["Open"]]  # when the day is negative
 
     # returns over windows
-    one_day_window = (df.iloc[-1]['Close'] - df.iloc[-2]['Close']) / df.iloc[-2]['Close'] * 100
-    one_week_window = (df.iloc[-1]['Close'] - df.iloc[-5]['Close']) / df.iloc[-2]['Close'] * 100
-    one_month_window = (df.iloc[-1]['Close'] - df.iloc[-21]['Close']) / df.iloc[-2]['Close'] * 100
-    three_month_window = (df.iloc[-1]['Close'] - df.iloc[-63]['Close']) / df.iloc[-2]['Close'] * 100
-    six_month_window = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
-    one_year_window = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
+    df['one_day_window'] = (df.iloc[-1]['Close'] - df.iloc[-2]['Close']) / df.iloc[-2]['Close'] * 100
+    df['one_week_window'] = (df.iloc[-1]['Close'] - df.iloc[-5]['Close']) / df.iloc[-2]['Close'] * 100
+    df['one_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-21]['Close']) / df.iloc[-2]['Close'] * 100
+    df['three_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-63]['Close']) / df.iloc[-2]['Close'] * 100
+    df['six_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
+    df['one_year_window'] = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
 
-    # currently just printing them idk what i'll do later
-    print(one_day_window, one_week_window, one_month_window, three_month_window, six_month_window, one_year_window, sep="\n")
+    # call the output function to display the choice
+    generate_signal(df=df)
 
     # after this is all for displaying so this goes after slimming the df down
     # find the step for slicing
@@ -246,6 +249,17 @@ def update_graph(value, start_date, end_date):
         col=1,
     )
 
+    # # plot spy
+    # figure.add_trace(
+    #     go.Scatter(
+    #         x=df.pos,
+    #         y=spy_df['Close'],
+    #         name='SPY', 
+    #         text=df.index.strftime("%Y-%m-%d"),  # type: ignore
+    #         hovertemplate=("%{text}<br>SPY: %{y:.4f}<br><extra></extra>"),
+    #     ),
+    # )
+
     # SMA 20 & 50
     figure.add_trace(
         go.Scatter(
@@ -271,7 +285,7 @@ def update_graph(value, start_date, end_date):
     )
 
     # bollinger bands
-    figure.add_trace(
+    figure.add_trace( # higher bands
         go.Scatter(
             x=df.pos,
             y=df["Upper Band"],
@@ -283,7 +297,7 @@ def update_graph(value, start_date, end_date):
         row=1,
         col=1,
     )
-    figure.add_trace(
+    figure.add_trace( # lower band
         go.Scatter(
             x=df.pos,
             y=df["Lower Band"],
@@ -408,14 +422,14 @@ def update_graph(value, start_date, end_date):
     # atr
     figure.add_trace(
         go.Scatter(
-            x=df.pos, 
+            x=df.pos,
             y=df['ATR'],
             name="Average True Range",
             marker=dict(color="#4C7C7C"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>Average True Range: %{y:.4f}<br><extra></extra>"),
-        ), 
-        row=4, 
+        ),
+        row=4,
         col=1,
     )
 
@@ -466,7 +480,7 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=df["MACD"],
             name="MACD",
-            marker=dict(color="gray"),
+            line=dict(color="gray"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>MACD: %{y:.4f}<extra></extra>"),
         ),
@@ -478,13 +492,14 @@ def update_graph(value, start_date, end_date):
             x=df.pos,
             y=df["Signal Line"],
             name="Signal Line",
-            marker=dict(color="#89CFF0"),
+            line=dict(color="#89CFF0"),
             text=df.index.strftime("%Y-%m-%d"),  # type: ignore
             hovertemplate=("%{text}<br>Signal Line: %{y:.4f}<extra></extra>"),
         ),
         row=6,
         col=1,
     )
+
     # histogram
     colors = ["green" if val >= 0 else "red" for val in df["macd hist"]]
     figure.add_trace(
@@ -524,7 +539,7 @@ def update_graph(value, start_date, end_date):
     )
 
     # instead of having
-    for row in range(1, 6):
+    for row in range(1, 7):
         figure.update_xaxes(
             tickvals=tick_pos,
             ticktext=tick_label,
