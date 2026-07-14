@@ -75,10 +75,10 @@ def toggle_offcanvas(n1, is_open):
 )
 def update_graph(value, start_date, end_date):
 
-    # remove this later currently for testing
-    value = "AAPL"
-    start_date = "2023-05-01"
-    end_date = "2024-08-23"
+    # # remove this later currently for testing
+    # value = "AAPL"
+    # start_date = "2023-05-01"
+    # end_date = "2024-08-23"
 
     if not value or not start_date or not end_date:
         return go.Figure()
