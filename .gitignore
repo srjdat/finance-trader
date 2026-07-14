@@ -3,3 +3,5 @@
 venv/
 test.py
 .ropeproject
+__pycache__/
+*.pyc
