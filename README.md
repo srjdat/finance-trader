@@ -26,3 +26,6 @@
 5. In your terminal it will show the one day/week/month, three/six month, and one year returns alongside the overall score and its opinion on whether to buy, sell, or hold. 
 
 The score and opinion should not be taken with full trust as the score is given on a rudimentary equation that I developed and the threshold is something I tested and found optimal. If you want to change the equation weightings or threshold you can do so in `output.py` 
+
+### Additional Information
+- Only works with NASDAQ companies as of now.
