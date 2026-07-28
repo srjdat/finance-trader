@@ -38,7 +38,7 @@ app.layout = dbc.Container(
                         dcc.DatePickerRange(
                             id="dates",
                             min_date_allowed=date(2000, 1, 1),  # type: ignore
-                            max_date_allowed=date(2026, 6, 27),  # type: ignore
+                            max_date_allowed=date(2026, 7, 17),  # type: ignore
                             initial_visible_month=date(2026, 6, 27),  # type: ignore
                             style={"width": "260px"},
                         ),
@@ -75,10 +75,12 @@ def toggle_offcanvas(n1, is_open):
 )
 def update_graph(value, start_date, end_date):
 
-    # # remove this later currently for testing
-    # value = "AAPL"
-    # start_date = "2023-05-01"
-    # end_date = "2024-08-23"
+    # remove this later currently for testing
+    today = date.today()
+
+    value = "AAPL"
+    start_date = "2023-05-01"
+    end_date = today.replace(day=today.day+1)
 
     if not value or not start_date or not end_date:
         return go.Figure()
@@ -187,11 +189,11 @@ def update_graph(value, start_date, end_date):
 
     # returns over windows
     df['one_day_window'] = (df.iloc[-1]['Close'] - df.iloc[-2]['Close']) / df.iloc[-2]['Close'] * 100
-    df['one_week_window'] = (df.iloc[-1]['Close'] - df.iloc[-5]['Close']) / df.iloc[-2]['Close'] * 100
-    df['one_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-21]['Close']) / df.iloc[-2]['Close'] * 100
-    df['three_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-63]['Close']) / df.iloc[-2]['Close'] * 100
-    df['six_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-2]['Close'] * 100
-    df['one_year_window'] = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-2]['Close'] * 100
+    df['one_week_window'] = (df.iloc[-1]['Close'] - df.iloc[-5]['Close']) / df.iloc[-5]['Close'] * 100
+    df['one_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-21]['Close']) / df.iloc[-21]['Close'] * 100
+    df['three_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-63]['Close']) / df.iloc[63]['Close'] * 100
+    df['six_month_window'] = (df.iloc[-1]['Close'] - df.iloc[-125]['Close']) / df.iloc[-125]['Close'] * 100
+    df['one_year_window'] = (df.iloc[-1]['Close'] - df.iloc[-252]['Close']) / df.iloc[-252]['Close'] * 100
 
     # call the output function to display the choice
     generate_signal(df=df)
@@ -254,7 +256,7 @@ def update_graph(value, start_date, end_date):
     #     go.Scatter(
     #         x=df.pos,
     #         y=spy_df['Close'],
-    #         name='SPY', 
+    #         name='SPY',
     #         text=df.index.strftime("%Y-%m-%d"),  # type: ignore
     #         hovertemplate=("%{text}<br>SPY: %{y:.4f}<br><extra></extra>"),
     #     ),

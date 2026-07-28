@@ -1,4 +1,5 @@
 import pandas as pd
+import math
 
 def generate_signal(df: pd.DataFrame): 
 
@@ -102,13 +103,16 @@ def generate_signal(df: pd.DataFrame):
     week_52_proportion =  (close - low) / (high - low)
     weighted_52_week_value = round((week_52_proportion - .5) / .5, 1)
 
-
     # volume, rvol 
     rvol = min(1, df['rvol'].iloc[-1])
 
     trend_score_group = (macd_weighted_value * .5) + (sma_weighted_value * .5) * rvol
     momentum_group_score = (rsi_weighted_value * 0.5) + (weighted_bb_value * 0.5)
     context_group_score = weighted_52_week_value
+
+    avg_daily_return = df['Daily Change'].mean()
+    vol = df['Daily Change'].std()
+    sharpe_ratio = (avg_daily_return/vol) * math.sqrt(252)
 
     overall_score = (trend_score_group * (1/3)) + (momentum_group_score * (1/3)) + (context_group_score * (1/3))
     print(f"one day return: {round(df['one_day_window'].iloc[-1], 4)}")
@@ -118,6 +122,7 @@ def generate_signal(df: pd.DataFrame):
     print(f"six month return: {round(df['six_month_window'].iloc[-1], 4)}")
     print(f"one year return: {round(df['one_year_window'].iloc[-1], 4)}")
     print(f"overall score {round(overall_score, 4)}")
+    print(f"sharpe ratio {round(sharpe_ratio, 3)}") # empty print statement if you print it over and over again
 
     threshold = .25
     if overall_score > threshold: 
