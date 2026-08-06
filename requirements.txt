@@ -5,7 +5,3 @@ mplfinance
 tkcalendar
 dash
 dash-bootstrap-components
-transformers
-datasets
-torch
-accelerate
